@@ -8,7 +8,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-
+## Problem 1
 ```{r cars}
 
 library(tidyverse)
@@ -45,5 +45,40 @@ fill_in_missing = function(x) {
 output = map_df(.x = iris_with_missing, ~ fill_in_missing(.x))  
 ```
 
+## Problem 2
+```{r}
+## create dataframe containing all file names
+files = list.files("./data")
+files_df = tibble(files)
+## iterate over file names and read in data for each subject 
+fil = files_df %>%
+  mutate(file_contents = map(files, ~read_csv(file.path("./data", ., fsep = "/")))) %>%
+  unnest(file_contents) %>%
+  janitor::clean_names() %>%
+  separate(files, into = c("arm", "subject_id")) %>%
+  mutate(
+   arm =  factor(ifelse(arm == "con", "control arm", "experimental arm" )),
+   subject_id = factor(subject_id)
+  ) %>%
+  pivot_longer(
+    week_1:week_8,
+    names_to = "number_of_week",
+    values_to = "value"
+  ) %>%
+  group_by(arm,subject_id) %>%
+  ggplot(aes(x = number_of_week, y = value, group = arm, colour = factor(arm)))+
+  geom_line()
+    
+ 
 
+```
+Comparing control group against the experimental group, we can see that the data for each participants in the experimental group is significantly lower in value.
 
+## Problem 3
+```{r plot_null_rejected}
+
+```
+
+```{r plot_average_estimate}
+
+```
