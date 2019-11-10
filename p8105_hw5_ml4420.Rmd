@@ -77,8 +77,113 @@ Comparing control group against the experimental group, we can see that the data
 ## Problem 3
 ```{r plot_null_rejected}
 
-```
+set.seed(10000)
 
+sim_regression = function(beta1, n = 30, beta0 = 2) {
+  
+  sim_data = tibble(
+    x = rnorm(n),
+    y = beta0 + beta1 * x + rnorm(n, 0, 50)
+  )
+  
+  ls_fit = lm(y ~ x, data = sim_data) 
+  tibble(
+    beta1_hat = coef(ls_fit)[2],
+    p_value = pull(ls_fit %>% broom::tidy() %>% filter(term == "x"), p.value)
+  )
+}
+
+
+
+beta1_list = list("beta1_0" = 0,
+                  "beta1_1" = 1,
+                  "beta1_2" = 2,
+                  "beta1_3" = 3,
+                  "beta1_4" = 4,
+                  "beta1_5" = 5,
+                  "beta1_6" = 6)
+  output = vector("list", length = 7)
+  for(i in 1:7) {
+    output[[i]] = rerun(10000, sim_regression(beta1_list[[i]])) %>%
+    bind_rows  
+  }  
+  
+  sim_results =
+    tibble(beta1_value = c(0, 1, 2, 3, 4, 5, 6)) %>%
+    mutate(
+      output_lists = map(.x = beta1_value, ~rerun(10000, sim_regression(beta1 = .x))),
+      output_dfs = map(output_lists, bind_rows)) %>%
+    select(-output_lists)%>%
+    unnest(output_dfs)
+  sim_results %>%
+   
+    mutate(
+           beta1_value = str_c("beta1 = ", beta1_value),
+           beta1_value = fct_inorder(beta1_value)) %>%
+     group_by(beta1_value) %>%
+    mutate(power_test = sum(p_value < 0.05)/10000) %>%
+    select(beta1_value, power_test) %>%
+    unique() %>%
+    ggplot(aes(x = beta1_value, y = power_test)) +
+    geom_point()
+  # power_test[[j]] = sum(sim_results$p_value < 0.05)/10000
+
+
+#power_test_results = bind_rows(power_test)
+
+```
+From the plot, we can see a monotonically increasing relationship between beta1_value and power. 
+The standardized effect size is equivalent to the standardized regression coefficient (beta1) as both divide the size of the effect by the relevant standard deviations.
+We can then conclude that, as the effect size increases, the power of the statistical test increases.
 ```{r plot_average_estimate}
+# plot showing the average estimate of beta1 hat
+plot_1 = sim_results %>%
+   
+    mutate(
+           beta1_value = str_c("beta1 = ", beta1_value),
+           beta1_value = fct_inorder(beta1_value)) %>%
+    group_by(beta1_value) %>%
+    mutate(average_beta1_hat = mean(beta1_hat)) %>%
+    select(beta1_value, average_beta1_hat) %>%
+    unique() 
+
+
+
+plot_2 = sim_results %>%
+   
+    mutate(
+           beta1_value = str_c("beta1 = ", beta1_value),
+           beta1_value = fct_inorder(beta1_value)) %>%
+    filter(p_value < 0.05) %>%
+    group_by(beta1_value) %>%
+     
+    mutate(average_beta1_hat = mean(beta1_hat)) %>%
+    select(beta1_value, average_beta1_hat) %>%
+    unique()
+
+ggplot()+
+  geom_point(data = plot_1, aes(x = beta1_value, y = average_beta1_hat), color = 'green' ) +
+  geom_point(data = plot_2, aes(x = beta1_value, y = average_beta1_hat), color = 'red')
+# plot overlaid with beta1 hat only in samples for which the null was rejected
 
 ```
+
+```{r right_skewed_illustration}
+
+sim_results %>%
+    mutate(
+           beta1_value = str_c("beta1 = ", beta1_value),
+           beta1_value = fct_inorder(beta1_value)) %>%
+    group_by(beta1_value) %>%
+    filter(p_value < 0.05) %>%
+    ggplot(aes(x = beta1_hat, color = beta1_value)) +
+    geom_density()    
+  
+```
+
+The sample average of $\hat \beta_1$ across tests for which the null is rejected is not approximately equal to the true value of $\beta_1$ - instead it is higher than the true value of beta 1.
+If the model assumptions are correct, the sampling distributions of $\hat \beta_1$ is normally distributed with mean equal to true value $\beta_1$.
+
+The reason is that the when null is rejected, value of test statistics is greater than the threshold. 
+$\hat \beta_1$ is not normally distributed and its distribution is asymmetric and right-skewed, as can be seen from the graphs.
+beta = type 2 error which is the prob of accept h0 when h0 is false. The true follows a normal distribution with mean beta and. In a normal distribution, the mean is also the maximum point of the whole distribution. Therefore the average of $\hat \beta_1$ is higher than the true value of $\beta_1$ which is the mean 
