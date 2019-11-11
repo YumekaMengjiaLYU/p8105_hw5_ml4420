@@ -9,7 +9,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ## Problem 1
-```{r cars}
+```{r}
 
 library(tidyverse)
 
@@ -57,7 +57,7 @@ fil = files_df %>%
   janitor::clean_names() %>%
   separate(files, into = c("arm", "subject_id")) %>%
   mutate(
-   arm =  factor(ifelse(arm == "con", "control arm", "experimental arm" )),
+   group =  factor(ifelse(arm == "con", "control arm", "experimental arm" )),
    subject_id = factor(subject_id)
   ) %>%
   pivot_longer(
@@ -66,13 +66,13 @@ fil = files_df %>%
     values_to = "value"
   ) %>%
   group_by(arm,subject_id) %>%
-  ggplot(aes(x = number_of_week, y = value, group = arm, colour = factor(arm)))+
-  geom_line()
+  ggplot(aes(x = number_of_week, y = value, group = arm, colour = group, group = subject_id))+
+  geom_path()
     
  
 
 ```
-Comparing control group against the experimental group, we can see that the data for each participants in the experimental group is significantly lower in value.
+Comparing the control group against the experimental group, we can see that the data for each participants in the experimental group is significantly higher in value.
 
 ## Problem 3
 ```{r plot_null_rejected}
